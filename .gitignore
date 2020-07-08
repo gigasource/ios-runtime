@@ -38,3 +38,7 @@ node_modules/
 package-lock.json
 *.pyc
 .vscode/
+projects/MyApp/app/
+projects/MyApp/nodejs-project/app-android
+projects/MyApp/nodejs-project/app-android.js
+projects/MyApp/nodejs-project/mongo-addon.node
