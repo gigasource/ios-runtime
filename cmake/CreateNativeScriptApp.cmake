@@ -1,8 +1,17 @@
-function(CreateNativeScriptApp _target _main _plist _resources)
-    include_directories("${RUNTIME_DIR}/**" ${NATIVESCRIPT_DEBUGGING_DIR})
+function(CreateNativeScriptApp _target _main _headers _plist _resources)
+    include_directories("${RUNTIME_DIR}/**" ${NATIVESCRIPT_DEBUGGING_DIR} "${CMAKE_SOURCE_DIR}/NodeMobile.framework/Headers" "${CMAKE_SOURCE_DIR}/examples/Gameraww")
     link_directories(${WEBKIT_LINK_DIRECTORIES} "${LIBFFI_LIB_DIR}")
 
-    add_executable(${_target} ${_main} ${_resources})
+    set(FRAMEWORK_NAME "NodeMobile")
+    add_executable(${_target} MACOSX_BUNDLE ${_headers} ${_main} ${_resources})
+
+    set_target_properties(${_target} PROPERTIES
+        XCODE_ATTRIBUTE_OTHER_LDFLAGS "${XCODE_ATTRIBUTE_OTHER_LDFLAGS} -framework ${FRAMEWORK_NAME}"
+    )
+
+    target_include_directories(${_target} PUBLIC
+        "${CMAKE_SOURCE_DIR}/MyFrameworks/${FRAMEWORK_NAME}.framework"
+    )
 
     target_link_libraries(${_target}
         "-ObjC"
@@ -11,6 +20,9 @@ function(CreateNativeScriptApp _target _main _plist _resources)
         "-framework MobileCoreServices"
         "-framework Security"
     )
+
+    target_link_libraries(${_target}
+        ${EXTRA_LIB})
 
     if(NOT ${BUILD_SHARED_LIBS})
         add_dependencies(${_target} NativeScript)
@@ -34,6 +46,10 @@ function(CreateNativeScriptApp _target _main _plist _resources)
         set_target_properties(${_target} PROPERTIES
             XCODE_ATTRIBUTE_LD_RUNPATH_SEARCH_PATHS    "@executable_path/Frameworks"
         )
+        target_include_directories(${_target} PUBLIC
+                "${CMAKE_SOURCE_DIR}/projects/MyApp/include/node")
+        target_include_directories(${_target} PUBLIC
+                        "${CMAKE_SOURCE_DIR}/projects/MyApp")
 
         # Create Frameworks directory in app bundle
         add_custom_command(
@@ -88,4 +104,27 @@ function(CreateNativeScriptApp _target _main _plist _resources)
 
     include(GenerateMetadata)
     GenerateMetadata(${_target})
+
+    add_custom_command(
+        TARGET
+        ${_target}
+        POST_BUILD COMMAND /bin/sh -c
+        \"COMMAND_DONE=0 \;
+        if ${CMAKE_COMMAND} -E copy_directory
+            ${CMAKE_SOURCE_DIR}/MyFrameworks/
+            ${PROJECT_BINARY_DIR}/projects/MyApp/\${CONFIGURATION}\${EFFECTIVE_PLATFORM_NAME}/${_target}.app/Frameworks
+            \&\>/dev/null \; then
+            COMMAND_DONE=1 \;
+        fi \;
+        #if ${CMAKE_COMMAND} -E copy_directory
+        #    \${BUILT_PRODUCTS_DIR}/${FRAMEWORK_NAME}.framework
+        #    \${BUILT_PRODUCTS_DIR}/${_target}.app/Frameworks/${FRAMEWORK_NAME}.framework
+        #    \&\>/dev/null \; then
+        #    COMMAND_DONE=1 \;
+        #fi \;
+        if [ \\$$COMMAND_DONE -eq 0 ] \; then
+            echo Failed to copy the framework into the app bundle \;
+            exit 1 \;
+        fi\"
+    )
 endfunction()
